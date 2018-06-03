@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            font: 21px Helvetica;
+            user-select: none;
+        }
+        
+        #myCanvas {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        
+        .light-blue-panel {
+            position: absolute;
+            right: 0;
+            border: 1px solid rgb(139, 195, 254);
+            border-radius: 5px 0 0 5px;
+            border-right: none;
+            padding: 10px;
+            background: rgba(139, 195, 254, 0.7);
+            min-width: 170px;
+        }
+        
+        .shapes {
+            top: 20px;
+        }
+        
+        .settings {
+            top: 180px;
+        }
+        
+        .clear {
+            top: 365px;
+        }
+        
+        .shape {
+            border-bottom: 1px dashed #1280f2;
+            color: #1280f2;
+            cursor: pointer;
+        }
+        
+        .shape~.shape {
+            margin-top: 5px;
+        }
+        
+        .shape:hover {
+            color: #555;
+        }
+        
+        .shape input {
+            width: 15px;
+            height: 15px;
+            margin-bottom: 7px;
+            padding: 1px 2px 1px 2px;
+            border-width: 0px;
+        }
+        
+        .shape input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin: 0px;
+            padding: 1px 2px;
+            border-width: 0px;
+        }
+        
+        .shape a {
+            font-weight: bold;
+            margin-bottom: 2px;
+            color: crimson;
+        }
+        
+        .readme {
+            font-size: 15px;
+            top: 435px;
+            font-weight: bold;
+        }
+        
+        .readme .shape {
+            color: #07305c;
+            cursor: auto;
+        }
+        
+        .readme .shape:hover {
+            color: #07305c;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="myCanvas"></canvas>
+
+    <div class="light-blue-panel shapes">
+        <div class="shape" data-shape="circle">circle</div>
+        <div class="shape" data-shape="quad">quad</div>
+        <div class="shape" data-shape="triangle">triangle</div>
+        <div class="shape" data-shape="heart">heart</div>
+    </div>
+
+    <div class="light-blue-panel settings">
+        <div class="shape">
+            <input type="checkbox" id="gradient" />
+            <label for="gradient">Use Gradient</label>
+        </div>
+        <div class="shape">
+            <input type="text" id="strokeWidth" value="2" />
+            <label for="strokeWidth">Stroke Width</label>
+        </div>
+        <div class="shape">
+            <input type="color" id="strokeColor" value="#9D8CD7" />
+            <label for="strokeColor">Stroke Color</label>
+        </div>
+        <div class="shape">
+            <input type="color" id="fillColor" value="#C6BAEE" />
+            <label for="fillColor">Fill Color</label>
+        </div>
+    </div>
+
+    <div class="light-blue-panel clear">
+        <div class="shape">
+            <a id="stop">Stop The Chaos!</a>
+        </div>
+    </div>
+
+    <div class="light-blue-panel readme">
+        <div class="shape">
+            <h3>HOW TO USE:</h3>
+        </div>
+        <div class="shape">
+            Click on the shape link to select the shape
+        </div>
+        <div class="shape">
+            Move the mouse to the canvas to locate a shape
+        </div>
+        <div class="shape">
+            Press ESC to cancel drawing
+        </div>
+        <div class="shape">
+            Use mouse wheel to scale the shape
+        </div>
+        <div class="shape">
+            Turn the gradient fill on/off
+        </div>
+        <div class="shape">
+            Set the stroke (border) width
+        </div>
+        <div class="shape">
+            Change the stroke and fill color
+        </div>
+        <div class="shape">
+            Use the "Stop the Chaos!" button to remove them all
+        </div>
+    </div>
+
+    <script src="./shapes.js"></script>
+    <script src="./app.js"></script>
+    <script>
+        const canvasNode = document.querySelector("#myCanvas");
+        const btnStop = document.querySelector("#stop");
+
+        const app = new App(canvasNode);
+        const shapeMap = {
+            circle: Circle,
+            quad: Quad,
+            triangle: Triangle,
+            heart: Heart
+        };
+        let currentSize = 100;
+
+        canvasNode.addEventListener("mousemove", e => {
+            if (app.currentShape) {
+                app.currentShape.setPosition(e.clientX, e.clientY);
+            }
+        });
+
+        canvasNode.addEventListener("click", e => {
+            if (app.currentShape) {
+                const shapeClass = app.currentShape.constructor;
+                const shape = createShape(shapeClass, e.clientX, e.clientY);
+
+                app.addShape(app.currentShape);
+                app.setCurrentShape(shape);
+            }
+        });
+
+        canvasNode.addEventListener("wheel", e => {
+            e.preventDefault();
+
+            if (app.currentShape) {
+                currentSize = app.currentShape.size + e.deltaY;
+                app.currentShape.setSize(currentSize);
+            }
+        });
+
+        document.addEventListener("keydown", e => {
+            if (e.keyCode === 27) {
+                app.setCurrentShape(null);
+            }
+        });
+
+        document.addEventListener("click", e => {
+            const shape = e.target.dataset.shape;
+
+            if (shape && shapeMap.hasOwnProperty(shape)) {
+                const shapeClass = shapeMap[shape];
+                const newShape = createShape(shapeClass);
+
+                app.setCurrentShape(newShape);
+            }
+        });
+
+        btnStop.addEventListener("click", e => {
+            e.preventDefault();
+            app.clearForever();
+        });
+
+        window.addEventListener("load", onResize);
+        window.addEventListener("resize", onResize);
+
+        function createShape(ShapeClass, x, y) {
+            const shape = new ShapeClass(x, y, currentSize);
+
+            shape.setFillColor(getFillColor());
+            shape.setStrokeColor(getStrokeColor());
+            shape.setStrokeWidth(getStrokeWith());
+            shape.setUseGradient(getUseGradient());
+
+            return shape;
+        }
+
+        function onResize() {
+            canvasNode.width = window.innerWidth;
+            canvasNode.height = window.innerHeight;
+        }
+
+        function getUseGradient() {
+            const chbUseGradient = document.querySelector("#gradient");
+            return chbUseGradient.checked;
+        }
+
+        function getStrokeWith() {
+            const txtStrokeWidth = document.querySelector("#strokeWidth");
+            return parseInt(txtStrokeWidth.value);
+        }
+
+        function getStrokeColor() {
+            const txtStrokeColor = document.querySelector("#strokeColor");
+            return txtStrokeColor.value;
+        }
+
+        function getFillColor() {
+            const txtFillColor = document.querySelector("#fillColor");
+            return txtFillColor.value;
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container {
+            display: flex;
+            padding: 30px;
+            height: 500px;
+        }
+        
+        .source,
+        .target {
+            display: flex;
+            flex-basis: 50%;
+            flex-wrap: wrap;
+            align-content: start;
+            padding: 15px;
+            border: 3px dashed #b3b3b3;
+            border-radius: 10px;
+        }
+        
+        .source {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        
+        .target {
+            border-left: none;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+        
+        .item,
+        .new-item,
+        .phantom-item {
+            margin: 0 10px 10px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: hsla(0, 0%, 40%, 1);
+        }
+        
+        .item,
+        .new-item,
+        .phantom-item {
+            border: 2px dashed #783db3;
+            border-radius: 10px;
+            width: 50px;
+            height: 50px;
+            cursor: move;
+            user-select: none;
+        }
+        
+        .new-item {
+            cursor: pointer;
+            border: 2px dashed #b3b3b3;
+            font-size: 16px;
+        }
+        
+        .phantom-item {
+            cursor: pointer;
+            border: 2px dashed #eeefff;
+            font-size: 16px;
+            color: #dddfff;
+        }
+    </style>
+</head>
+
+<body class="container text-center">
+    <div class="container">
+        <div class="source" name="zone">
+            <div class="new-item">+</div>
+        </div>
+
+        <div class="target" name="zone">
+            <div class="new-item">+</div>
+        </div>
+    </div>
+
+    <script>
+        const source = document.querySelector(".source");
+        const target = document.querySelector(".target");
+        let counter = 0;
+
+        makeDnD([{
+            mainzone: source,
+            alterzone: target
+        }, {
+            mainzone: target,
+            alterzone: source
+        }]);
+
+        document.addEventListener("click", e => {
+            if (e.target.classList.contains("new-item")) {
+                const newItem = createItem();
+                const parent = e.target.parentNode;
+
+                parent.insertBefore(newItem, parent.lastElementChild);
+            }
+        });
+
+        function createItem() {
+            const newDiv = document.createElement("div");
+
+            newDiv.textContent = counter++;
+            newDiv.classList.add("item");
+            newDiv.draggable = true;
+
+            return newDiv;
+        }
+
+        function createPhantom(text) {
+            const newDiv = document.createElement("div");
+
+            newDiv.textContent = text;
+            newDiv.classList.add("phantom-item");
+
+            return newDiv;
+        }
+
+        function removePhantom(phantom, parent) {
+            parent.removeChild(phantom);
+        }
+
+        function makeDnD(zones) {
+            let currentDrag;
+
+            zones.forEach(zone => {
+                zone.mainzone.addEventListener("dragstart", e => {
+                    currentDrag = {
+                        source: zone.mainzone,
+                        node: e.target
+                    };
+                });
+
+                zone.mainzone.addEventListener("dragover", e => {
+                    e.preventDefault();
+                });
+
+                zone.mainzone.addEventListener("dragenter", e => {
+                    if (e.target.getAttribute('name') === 'zone' &&
+                        currentDrag &&
+                        currentDrag.source === zone.mainzone) {
+
+                        // если в соседней зоне есть фантом, его нужно удалить,
+                        // потому что элемент потащили обратно в свою зону
+                        let ph1 = zone.alterzone.querySelector(".phantom-item");
+                        if (ph1) {
+                            zone.alterzone.removeChild(ph1);
+                        }
+                    }
+
+                    if (
+                        (e.target.classList.contains("item") ||
+                            e.target.classList.contains("new-item")) &&
+                        currentDrag &&
+                        currentDrag.node !== e.target &&
+                        currentDrag.source !== zone.mainzone
+                    ) {
+                        // если в текущей зоне есть фантом, его нужно удалить
+                        let ph1 = zone.mainzone.querySelector(".phantom-item");
+                        if (ph1) {
+                            zone.mainzone.removeChild(ph1);
+                        }
+
+                        // вставляем нового фантома перед текущим квадратиком
+                        let ph = createPhantom(currentDrag.node.textContent);
+                        zone.mainzone.insertBefore(ph, e.target);
+                    }
+                });
+
+                zone.mainzone.addEventListener("drop", e => {
+                    if (currentDrag) {
+                        e.preventDefault();
+
+                        if (currentDrag.source !== zone.mainzone) {
+
+                            // вставляем перетаскиваемый элемент сразу за текущим квадратиком
+                            // либо в конец списка, если отпустили его на свободном пространстве
+                            if (e.target.classList.contains('item') || e.target.classList.contains('phantom-item')) {
+                                zone.mainzone.insertBefore(currentDrag.node, e.target /*.nextElementSibling*/ );
+                            } else {
+                                zone.mainzone.insertBefore(currentDrag.node, zone.mainzone.lastElementChild);
+                            }
+
+                            // удаляем фантома на текущей рабочей стороне
+                            // после вставки квадратика
+                            let ph1 = zone.mainzone.querySelector(".phantom-item");
+                            if (ph1) {
+                                zone.mainzone.removeChild(ph1);
+                            }
+                        }
+
+                        currentDrag = null;
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>
